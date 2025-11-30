@@ -5,20 +5,20 @@ import { DailyLog, MacroGoals, Ingredient, Meal } from "../types";
 const getAIClient = () => {
   let apiKey = '';
 
-  // 1. Try standard process.env (Node.js / Webpack / CRA)
+  // 1. Try Vite / Modern ES Build (import.meta.env) - PRIORITY for Vercel/Netlify Vite builds
   try {
-    if (typeof process !== 'undefined' && process.env) {
-      apiKey = process.env.API_KEY || process.env.REACT_APP_API_KEY || '';
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      apiKey = import.meta.env.VITE_API_KEY || import.meta.env.API_KEY || '';
     }
   } catch (e) {}
 
-  // 2. Try Vite / Modern ES Build (import.meta.env)
+  // 2. Try standard process.env (Node.js / Webpack / CRA / Polyfills)
   if (!apiKey) {
     try {
-      // @ts-ignore
-      if (typeof import.meta !== 'undefined' && import.meta.env) {
-        // @ts-ignore
-        apiKey = import.meta.env.VITE_API_KEY || import.meta.env.API_KEY || '';
+      if (typeof process !== 'undefined' && process.env) {
+        apiKey = process.env.VITE_API_KEY || process.env.REACT_APP_API_KEY || process.env.API_KEY || '';
       }
     } catch (e) {}
   }
@@ -26,8 +26,10 @@ const getAIClient = () => {
   if (!apiKey) {
     throw new Error(
       "未检测到 API Key。\n\n" +
-      "1. **本地运行**: 请在 .env 文件中添加 `API_KEY=您的密钥` (或 `VITE_API_KEY=...` 如果使用 Vite)。\n" +
-      "2. **Vercel/Netlify 部署**: 请在项目设置 (Settings) > Environment Variables 中添加变量 `API_KEY` (或 `VITE_API_KEY`)。"
+      "⚠️ **关键配置说明**:\n" +
+      "1. **Vercel / Netlify 部署**: 必须将环境变量命名为 `VITE_API_KEY`。如果命名为 `API_KEY`，出于安全原因，浏览器端将无法读取。\n" +
+      "2. **本地运行**: 请在 .env 文件中添加 `VITE_API_KEY=您的密钥`。\n\n" +
+      "请前往 Vercel/Netlify 的 Settings > Environment Variables，添加/修改变量名为 `VITE_API_KEY`，然后重新部署 (Redeploy)。"
     );
   }
   return new GoogleGenAI({ apiKey });
