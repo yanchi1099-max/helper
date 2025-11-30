@@ -1,11 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DailyLog, MacroGoals, Ingredient, Meal } from "../types";
 
-// Helper to safely get AI client
+// Helper to safely get AI client with robust environment variable detection
 const getAIClient = () => {
   let apiKey = '';
 
-  // 1. Try Vite / Modern ES Build (import.meta.env) - PRIORITY for Vercel/Netlify Vite builds
+  // 1. Try Vite / Modern ES Build (import.meta.env) - Recommended for Vercel/Netlify
   try {
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env) {
@@ -14,7 +14,7 @@ const getAIClient = () => {
     }
   } catch (e) {}
 
-  // 2. Try standard process.env (Node.js / Webpack / CRA / Polyfills)
+  // 2. Try standard process.env (Node.js / Webpack / CRA)
   if (!apiKey) {
     try {
       if (typeof process !== 'undefined' && process.env) {
@@ -26,10 +26,11 @@ const getAIClient = () => {
   if (!apiKey) {
     throw new Error(
       "未检测到 API Key。\n\n" +
-      "⚠️ **关键配置说明**:\n" +
-      "1. **Vercel / Netlify 部署**: 必须将环境变量命名为 `VITE_API_KEY`。如果命名为 `API_KEY`，出于安全原因，浏览器端将无法读取。\n" +
-      "2. **本地运行**: 请在 .env 文件中添加 `VITE_API_KEY=您的密钥`。\n\n" +
-      "请前往 Vercel/Netlify 的 Settings > Environment Variables，添加/修改变量名为 `VITE_API_KEY`，然后重新部署 (Redeploy)。"
+      "⚠️ **部署环境配置指南**:\n" +
+      "1. **Vercel / Netlify**: 请在 Settings > Environment Variables 中添加变量 `VITE_API_KEY`，值为您的密钥。\n" +
+      "2. **添加后操作**: 必须点击 **Redeploy** (重新部署) 才能生效。\n" +
+      "3. **本地开发**: 请在 .env 文件中添加 `VITE_API_KEY=您的密钥`。\n\n" +
+      "注意：出于安全限制，非 `VITE_` 开头的变量可能无法被浏览器读取。"
     );
   }
   return new GoogleGenAI({ apiKey });
@@ -111,8 +112,8 @@ export const parseFoodEntry = async (
     return { items: itemsWithIds, cookingAnalysis: result.cookingAnalysis || "无额外烹饪说明" };
   } catch (error: any) {
     console.error("Error parsing food:", error);
-    // Propagate the specific error message (e.g. "Missing API Key")
-    throw new Error(error.message || "分析食物失败，请重试。");
+    // Propagate the specific error message
+    throw error;
   }
 };
 
@@ -123,30 +124,30 @@ export const getMealRecommendation = async (
   goals: MacroGoals,
   mealType: string
 ): Promise<{ recommendation: string; reasoning: string; suggestedPortions: string }> => {
-  const currentCals = currentLog.meals.reduce((acc, m) => acc + m.items.reduce((iAcc, i) => iAcc + i.calories, 0), 0);
-  const currentProtein = currentLog.meals.reduce((acc, m) => acc + m.items.reduce((iAcc, i) => iAcc + i.protein, 0), 0);
-  
-  const remainingCals = goals.calories - currentCals;
-  const remainingProtein = goals.protein - currentProtein;
-
-  const prompt = `
-    用户背景:
-    - 每日目标: ${goals.calories} kcal, ${goals.protein}g 蛋白质。
-    - 目前已摄入: ${Math.round(currentCals)} kcal, ${Math.round(currentProtein)}g 蛋白质。
-    - 剩余预算: ${Math.round(remainingCals)} kcal, ${Math.round(remainingProtein)}g 蛋白质。
-    - 待选餐别: ${mealType}。
-    
-    用户非常纠结，提供了以下选项: ${options.join(", ")}。
-    
-    任务:
-    1. 选择**最适合**达成剩余目标（特别是蛋白质上限控制在80g左右，碳水供能 > 50%）的选项。
-    2. 提供所选餐食的**精确克重建议**（熟重），以完美填补剩余热量缺口。
-    3. 如果用户已经吃了晚餐但还不够，或者午餐吃多了晚餐需要少吃，请据此调整。
-    
-    请用**简体中文**回答。
-  `;
-
   try {
+    const currentCals = currentLog.meals.reduce((acc, m) => acc + m.items.reduce((iAcc, i) => iAcc + i.calories, 0), 0);
+    const currentProtein = currentLog.meals.reduce((acc, m) => acc + m.items.reduce((iAcc, i) => iAcc + i.protein, 0), 0);
+    
+    const remainingCals = goals.calories - currentCals;
+    const remainingProtein = goals.protein - currentProtein;
+
+    const prompt = `
+      用户背景:
+      - 每日目标: ${goals.calories} kcal, ${goals.protein}g 蛋白质。
+      - 目前已摄入: ${Math.round(currentCals)} kcal, ${Math.round(currentProtein)}g 蛋白质。
+      - 剩余预算: ${Math.round(remainingCals)} kcal, ${Math.round(remainingProtein)}g 蛋白质。
+      - 待选餐别: ${mealType}。
+      
+      用户非常纠结，提供了以下选项: ${options.join(", ")}。
+      
+      任务:
+      1. 选择**最适合**达成剩余目标（特别是蛋白质上限控制在80g左右，碳水供能 > 50%）的选项。
+      2. 提供所选餐食的**精确克重建议**（熟重），以完美填补剩余热量缺口。
+      3. 如果用户已经吃了晚餐但还不够，或者午餐吃多了晚餐需要少吃，请据此调整。
+      
+      请用**简体中文**回答。
+    `;
+
     const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview", // Use Pro for better reasoning
@@ -167,7 +168,7 @@ export const getMealRecommendation = async (
     return JSON.parse(response.text || "{}");
   } catch (error: any) {
     console.error("Error recommending meal:", error);
-    throw new Error(error.message || "获取推荐失败");
+    throw error;
   }
 };
 
