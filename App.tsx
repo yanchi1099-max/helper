@@ -618,4 +618,52 @@ const App: React.FC = () => {
           className="py-4 bg-rose-500 text-white rounded-xl font-bold shadow-md hover:bg-rose-600 transition flex flex-col items-center justify-center gap-1"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+          <span className="text-sm">减脂进度总结</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderReport = () => (
+    <div className="max-w-md mx-auto pb-8">
+       <header className="flex items-center mb-6">
+        <button onClick={() => setView('dashboard')} className="mr-4 text-slate-500 flex items-center hover:text-slate-800">
+           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          返回
+        </button>
+        <h1 className="text-xl font-bold">{reportTitle}</h1>
+      </header>
+      
+      {generatingReport ? (
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+           <div className="w-10 h-10 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin mb-4"></div>
+           <p>AI 正在分析您的数据...</p>
+        </div>
+      ) : (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 prose prose-slate prose-sm max-w-none">
+           {reportContent ? (
+             <div className="whitespace-pre-wrap leading-relaxed text-slate-700">
+              {reportContent}
+             </div>
+           ) : (
+             <p className="text-center text-slate-400">暂无报告内容</p>
+           )}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-100 p-4 md:p-8">
+       {view === 'dashboard' && renderDashboard()}
+       {view === 'calendar' && renderCalendar()}
+       {view === 'report' && renderReport()}
+    </div>
+  );
+};
+
+export default App;
