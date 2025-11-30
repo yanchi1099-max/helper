@@ -1,0 +1,7 @@
+{
+  "name": "智能饮食助手",
+  "description": "您的AI饮食管家。自动计算热量，智能推荐餐食，追踪身体维度变化。",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
