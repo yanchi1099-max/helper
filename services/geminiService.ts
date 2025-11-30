@@ -3,11 +3,32 @@ import { DailyLog, MacroGoals, Ingredient, Meal } from "../types";
 
 // Helper to safely get AI client
 const getAIClient = () => {
-  // Safety check for process.env in various local environments
-  const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
+  let apiKey = '';
+
+  // 1. Try standard process.env (Node.js / Webpack / CRA)
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      apiKey = process.env.API_KEY || process.env.REACT_APP_API_KEY || '';
+    }
+  } catch (e) {}
+
+  // 2. Try Vite / Modern ES Build (import.meta.env)
+  if (!apiKey) {
+    try {
+      // @ts-ignore
+      if (typeof import.meta !== 'undefined' && import.meta.env) {
+        // @ts-ignore
+        apiKey = import.meta.env.VITE_API_KEY || import.meta.env.API_KEY || '';
+      }
+    } catch (e) {}
+  }
   
   if (!apiKey) {
-    throw new Error("未检测到 API Key。在本地运行时，请确保在 .env 文件中配置了 API_KEY，或检查网络连接。");
+    throw new Error(
+      "未检测到 API Key。\n\n" +
+      "1. **本地运行**: 请在 .env 文件中添加 `API_KEY=您的密钥` (或 `VITE_API_KEY=...` 如果使用 Vite)。\n" +
+      "2. **Vercel/Netlify 部署**: 请在项目设置 (Settings) > Environment Variables 中添加变量 `API_KEY` (或 `VITE_API_KEY`)。"
+    );
   }
   return new GoogleGenAI({ apiKey });
 };
